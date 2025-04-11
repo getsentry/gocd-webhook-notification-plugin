@@ -6,6 +6,7 @@ import net.getsentry.gocd.webhooknotifier.PluginRequest;
 import net.getsentry.gocd.webhooknotifier.PluginSettings;
 import net.getsentry.gocd.webhooknotifier.ServerRequestFailedException;
 import net.getsentry.gocd.webhooknotifier.URLWithAuth;
+import net.getsentry.gocd.webhooknotifier.requests.StageStatusRequest;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -17,13 +18,19 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.util.EntityUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 
 public class HttpTest {
+    private static final DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
     @Test
     public void testPost() throws UnsupportedEncodingException, IOException {
         HttpClient mockClient = mock(HttpClient.class);
@@ -53,7 +60,8 @@ public class HttpTest {
         HttpClient mockClient = mock(HttpClient.class);
         PluginRequest mockPluginRequest = mock(PluginRequest.class);
         PluginSettings mockPluginSettings = mock(PluginSettings.class);
-        when(mockPluginSettings.getWebhooks()).thenReturn(new URLWithAuth[] { new URLWithAuth("https://example.com", "fakeAudience") });
+        when(mockPluginSettings.getWebhooks())
+                .thenReturn(new URLWithAuth[] { new URLWithAuth("https://example.com", "fakeAudience") });
         when(mockPluginRequest.getPluginSettings()).thenReturn(mockPluginSettings);
 
         HttpResponse mockGetResponse = mock(HttpResponse.class);
@@ -82,7 +90,8 @@ public class HttpTest {
             if (request instanceof HttpPost) {
                 HttpPost postRequest = (HttpPost) request;
                 try {
-                    return postRequest.getURI().toString().equals("https://example.com") && postRequest.getHeaders("Authorization")[0].getValue().equals("Bearer fakeToken");
+                    return postRequest.getURI().toString().equals("https://example.com")
+                            && postRequest.getHeaders("Authorization")[0].getValue().equals("Bearer fakeToken");
                 } catch (Exception e) {
                     return false;
                 }
@@ -92,18 +101,26 @@ public class HttpTest {
     }
 
     @Test
-    public void testPingWebhooks() throws IOException, ServerRequestFailedException {
+    public void testPingWebhooks() throws IOException, ServerRequestFailedException, ParseException {
         HttpClient mockClient = mock(HttpClient.class);
         PluginRequest mockPluginRequest = mock(PluginRequest.class);
         PluginSettings mockPluginSettings = mock(PluginSettings.class);
         when(mockPluginSettings.getWebhooks()).thenReturn(new URLWithAuth[] { new URLWithAuth("https://example.com") });
         when(mockPluginRequest.getPluginSettings()).thenReturn(mockPluginSettings);
 
-        Http.pingWebhooks(mockPluginRequest, "stage", "fakeData", mockClient);
+        StageStatusRequest stageStatusRequest = mock(StageStatusRequest.class);
+        stageStatusRequest.pipeline = mock(StageStatusRequest.Pipeline.class);
+        stageStatusRequest.pipeline.stage = mock(StageStatusRequest.Stage.class);
+        stageStatusRequest.pipeline.stage.createTime = DATE_FORMAT.parse("2021-01-01 10:12:00 AM");
+
+        Http.pingWebhooks(mockPluginRequest, "stage", stageStatusRequest, mockClient);
 
         verify(mockClient).execute(argThat((HttpPost request) -> {
             try {
-                return request.getURI().toString().equals("https://example.com");
+                String content = EntityUtils.toString(request.getEntity());
+                // Ensure the request is to the correct URL and the content is
+                return request.getURI().toString().equals("https://example.com") && content.contains(
+                        "{\"data\":{\"pipeline\":{\"stage\":{\"create-time\":\"2021-01-01T10:12:00.000-0800\"}}},\"type\":\"stage\"}");
             } catch (Exception e) {
                 return false;
             }
@@ -115,14 +132,16 @@ public class HttpTest {
         HttpClient mockClient = mock(HttpClient.class);
         PluginRequest mockPluginRequest = mock(PluginRequest.class);
         PluginSettings mockPluginSettings = mock(PluginSettings.class);
-        when(mockPluginSettings.getWebhooks()).thenReturn(new URLWithAuth[] { new URLWithAuth("https://example.com"), new URLWithAuth("https://example2.com") });
+        when(mockPluginSettings.getWebhooks()).thenReturn(
+                new URLWithAuth[] { new URLWithAuth("https://example.com"), new URLWithAuth("https://example2.com") });
         when(mockPluginRequest.getPluginSettings()).thenReturn(mockPluginSettings);
 
         Http.pingWebhooks(mockPluginRequest, "stage", "fakeData", mockClient);
 
         verify(mockClient, times(2)).execute(argThat((HttpPost request) -> {
             try {
-                return request.getURI().toString().equals("https://example.com") || request.getURI().toString().equals("https://example2.com");
+                return request.getURI().toString().equals("https://example.com")
+                        || request.getURI().toString().equals("https://example2.com");
             } catch (Exception e) {
                 return false;
             }
@@ -148,14 +167,17 @@ public class HttpTest {
         HttpClient mockClient = mock(HttpClient.class);
         PluginRequest mockPluginRequest = mock(PluginRequest.class);
         PluginSettings mockPluginSettings = mock(PluginSettings.class);
-        when(mockPluginSettings.getWebhooks()).thenReturn(new URLWithAuth[] { new URLWithAuth("https://example.com", null, "webhooksecret") });
+        when(mockPluginSettings.getWebhooks())
+                .thenReturn(new URLWithAuth[] { new URLWithAuth("https://example.com", null, "webhooksecret") });
         when(mockPluginRequest.getPluginSettings()).thenReturn(mockPluginSettings);
 
         Http.pingWebhooks(mockPluginRequest, "stage", "fakeData", mockClient);
 
         verify(mockClient).execute(argThat((HttpPost request) -> {
             try {
-                return request.getURI().toString().equals("https://example.com") && request.getHeaders("x-gocd-signature")[0].getValue().equals("64b0880a3e39c6dc74ab0a3db5b7fc7efc6dd8b70e3cb026d6af0b74b8b183c6");
+                return request.getURI().toString().equals("https://example.com")
+                        && request.getHeaders("x-gocd-signature")[0].getValue()
+                                .equals("64b0880a3e39c6dc74ab0a3db5b7fc7efc6dd8b70e3cb026d6af0b74b8b183c6");
             } catch (Exception e) {
                 return false;
             }
