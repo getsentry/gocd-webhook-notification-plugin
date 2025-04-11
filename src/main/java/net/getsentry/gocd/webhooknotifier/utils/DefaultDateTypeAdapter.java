@@ -30,7 +30,7 @@ public class DefaultDateTypeAdapter implements JsonSerializer<Date>, JsonDeseria
     @Override
     public JsonElement serialize(Date src, Type typeOfSrc, JsonSerializationContext context) {
         synchronized (localFormat) {
-            String dateFormatAsString = enUsFormat.format(src);
+            String dateFormatAsString = enUsFormat.format(src).replaceAll(String.valueOf((char) 8239), " ");
             return new JsonPrimitive(dateFormatAsString);
         }
     }
