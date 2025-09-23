@@ -74,6 +74,13 @@ jar {
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
-    // Exclude duplicate files (like META-INF files)
+    // Exclude duplicate files, signature files, and problematic classes
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+    exclude 'module-info.class'
+    exclude 'io/grpc/**'
+    exclude '**/Hidden$NettyBlockHoundIntegration.class'
+    exclude '**/Log4J2Logger.class'
+    exclude '**/JettyAlpnSslEngine*.class'
+    exclude '**/JettyNpnSslEngine*.class'
 }
