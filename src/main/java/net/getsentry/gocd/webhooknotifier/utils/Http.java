@@ -27,6 +27,8 @@ import java.util.List;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
+import io.sentry.Sentry;
+import io.sentry.ISpan;
 
 public class Http {
   private static final String DATE_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSSZ";
@@ -53,6 +55,12 @@ public class Http {
     }
 
     URLWithAuth[] urlWithAuths = ps.getWebhooks();
+    // Get existing transaction or create a new one
+    ISpan parentSpan = Sentry.getSpan();
+    ISpan webhooksSpan = parentSpan != null ? 
+        parentSpan.startChild("webhook.notification", type) : 
+        Sentry.startTransaction("webhook.notification", type);
+    
     for (URLWithAuth urlWithAuth : urlWithAuths) {
       try {
         List<Header> headers = new ArrayList<Header>();
@@ -68,11 +76,14 @@ public class Http {
           headers.add(new BasicHeader("x-gocd-signature", Auth.createSignature(responseJsonStr, urlWithAuth.getSecretValue())));
         }
 
+        ISpan span = webhooksSpan.startChild("http.post");
         post(url, responseJsonStr, client, headers.toArray(new Header[0]));
+        span.finish();
       } catch (Exception e) {
         System.out.printf("    😺 failed to post request to %s with audience %s: %s\n", urlWithAuth.getUrl(), urlWithAuth.getAudience(), e.getMessage());
       }
     }
+    webhooksSpan.finish();
   }
 
   public static void pingWebhooks(PluginRequest pluginRequest, String type, Object originalPayload)
