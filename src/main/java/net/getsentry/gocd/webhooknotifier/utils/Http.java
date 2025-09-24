@@ -57,9 +57,7 @@ public class Http {
     URLWithAuth[] urlWithAuths = ps.getWebhooks();
     // Get existing transaction or create a new one
     ISpan parentSpan = Sentry.getSpan();
-    ISpan webhooksSpan = parentSpan != null ? 
-        parentSpan.startChild("webhook.notification", type) : 
-        Sentry.startTransaction("webhook.notification", type);
+    ISpan webhooksSpan = parentSpan.startChild("webhook.notification", type);
     
     for (URLWithAuth urlWithAuth : urlWithAuths) {
       try {
@@ -77,7 +75,10 @@ public class Http {
         }
 
         ISpan span = webhooksSpan.startChild("http.post");
-        post(url, responseJsonStr, client, headers.toArray(new Header[0]));
+        span.setData("webhook.url", url.toString());
+        HttpResponse response = post(url, responseJsonStr, client, headers.toArray(new Header[0]));
+        int statusCode = response.getStatusLine().getStatusCode();
+        span.setData("webhook.status", statusCode);
         span.finish();
       } catch (Exception e) {
         System.out.printf("    😺 failed to post request to %s with audience %s: %s\n", urlWithAuth.getUrl(), urlWithAuth.getAudience(), e.getMessage());

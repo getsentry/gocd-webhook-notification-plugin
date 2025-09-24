@@ -41,7 +41,6 @@ public class WebhookNotifierPlugin implements GoPlugin {
     public static final Logger LOG = Logger.getLoggerFor(WebhookNotifierPlugin.class);
 
     static {
-        // Hardcoded Sentry configuration
         Sentry.init(options -> {
             options.setDsn("https://989fe818e06c640a6688a08a208325ec@o1.ingest.us.sentry.io/4510070253289472");
             options.setEnvironment("prod");
