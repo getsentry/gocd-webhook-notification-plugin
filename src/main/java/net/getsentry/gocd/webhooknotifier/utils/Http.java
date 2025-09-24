@@ -75,7 +75,7 @@ public class Http {
           headers.add(new BasicHeader("x-gocd-signature", Auth.createSignature(responseJsonStr, urlWithAuth.getSecretValue())));
         }
 
-        ISpan span = webhooksSpan.startChild("http.post");
+        ISpan httpPostSpan = webhooksSpan.startChild("http.post");
         span.setData("webhook.url", url.toString());
         HttpResponse response = post(url, responseJsonStr, client, headers.toArray(new Header[0]));
         int statusCode = response.getStatusLine().getStatusCode();
