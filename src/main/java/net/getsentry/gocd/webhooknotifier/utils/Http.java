@@ -79,7 +79,7 @@ public class Http {
         span.setData("webhook.url", url.toString());
         HttpResponse response = post(url, responseJsonStr, client, headers.toArray(new Header[0]));
         int statusCode = response.getStatusLine().getStatusCode();
-        span.setData("webhook.status", statusCode);
+        span.setData("webhook.status_code", statusCode);
         span.finish();
       } catch (Exception e) {
         System.out.printf("    😺 failed to post request to %s with audience %s: %s\n", urlWithAuth.getUrl(), urlWithAuth.getAudience(), e.getMessage());
