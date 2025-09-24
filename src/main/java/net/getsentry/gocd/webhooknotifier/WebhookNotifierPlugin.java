@@ -41,9 +41,17 @@ public class WebhookNotifierPlugin implements GoPlugin {
     public static final Logger LOG = Logger.getLoggerFor(WebhookNotifierPlugin.class);
 
     static {
+        String hostname = System.getenv("HOSTNAME");
+        final String environment;
+        if (hostname != null && hostname.contains("deploy")) {
+            environment = hostname.contains("staging") ? "staging" : "production";
+        } else {
+            environment = "dev";
+        }
+        
         Sentry.init(options -> {
             options.setDsn("https://989fe818e06c640a6688a08a208325ec@o1.ingest.us.sentry.io/4510070253289472");
-            options.setEnvironment("production");
+            options.setEnvironment(environment);
             options.setTracesSampleRate(1.0);
             options.setEnableTracing(true);
             options.setSendDefaultPii(true);
