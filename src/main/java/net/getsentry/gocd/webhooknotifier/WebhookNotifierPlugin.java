@@ -43,7 +43,7 @@ public class WebhookNotifierPlugin implements GoPlugin {
     static {
         Sentry.init(options -> {
             options.setDsn("https://989fe818e06c640a6688a08a208325ec@o1.ingest.us.sentry.io/4510070253289472");
-            options.setEnvironment("prod");
+            options.setEnvironment("production");
             options.setTracesSampleRate(1.0);
             options.setEnableTracing(true);
             options.setSendDefaultPii(true);
