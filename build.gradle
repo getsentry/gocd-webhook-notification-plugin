@@ -29,9 +29,9 @@ project.ext.pluginDesc = [
         vendorUrl  : 'https://github.com/getsentry/webhook-notification-plugin'
 ]
 
-// Updated to Java 11
-sourceCompatibility = 11
-targetCompatibility = 11
+// Force 1.8 compatibility to ensure that it works with older JVMs
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
 // In this section you declare where to find the dependencies of your project
 repositories {
