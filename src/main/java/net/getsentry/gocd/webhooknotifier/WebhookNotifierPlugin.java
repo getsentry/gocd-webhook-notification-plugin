@@ -65,7 +65,6 @@ public class WebhookNotifierPlugin implements GoPlugin {
         ITransaction transaction = null;
         Request requestType = Request.fromString(request.requestName());
         
-        // Start transaction for webhook notification requests
         if (requestType == Request.REQUEST_STAGE_STATUS || requestType == Request.REQUEST_AGENT_STATUS) {
             transaction = Sentry.startTransaction("gocd.webhook.handle", request.requestName());
         }

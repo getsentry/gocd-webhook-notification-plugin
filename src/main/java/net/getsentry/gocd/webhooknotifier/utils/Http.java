@@ -55,7 +55,6 @@ public class Http {
     }
 
     URLWithAuth[] urlWithAuths = ps.getWebhooks();
-    // Get existing transaction or create a new one
     ISpan parentSpan = Sentry.getSpan();
     ISpan webhooksSpan = parentSpan != null ? 
         parentSpan.startChild("webhook.notification", type) : 
