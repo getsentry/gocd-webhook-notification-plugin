@@ -30,8 +30,10 @@ project.ext.pluginDesc = [
 ]
 
 // Force 1.8 compatibility to ensure that it works with older JVMs
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
 
 // In this section you declare where to find the dependencies of your project
 repositories {
