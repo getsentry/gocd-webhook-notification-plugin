@@ -41,6 +41,16 @@ public class Http {
 
   private static final ExecutorService WEBHOOK_EXECUTOR = Executors.newFixedThreadPool(10);
 
+  private static final RequestConfig REQUEST_CONFIG = RequestConfig.custom()
+      .setConnectTimeout(5000)
+      .setSocketTimeout(10000)
+      .setConnectionRequestTimeout(5000)
+      .build();
+
+  private static final HttpClient HTTP_CLIENT = HttpClientBuilder.create()
+      .setDefaultRequestConfig(REQUEST_CONFIG)
+      .build();
+
   private static final Gson GSON = new GsonBuilder()
       .registerTypeAdapter(Date.class, new DefaultDateTypeAdapter(DATE_PATTERN))
       .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
@@ -99,19 +109,9 @@ public class Http {
 
   public static void pingWebhooks(PluginRequest pluginRequest, String type, Object originalPayload)
       throws ServerRequestFailedException {
-    RequestConfig requestConfig = RequestConfig.custom()
-        .setConnectTimeout(5000)           // connect timeout
-        .setSocketTimeout(10000)           // read timeout
-        .setConnectionRequestTimeout(5000) // timeout to get connection from pool
-        .build();
-    
-    HttpClient httpClient = HttpClientBuilder.create()
-        .setDefaultRequestConfig(requestConfig)
-        .build();
-    
     WEBHOOK_EXECUTOR.submit(() -> {
       try {
-        pingWebhooks(pluginRequest, type, originalPayload, httpClient);
+        pingWebhooks(pluginRequest, type, originalPayload, HTTP_CLIENT);
       } catch (Exception e) {
         System.out.printf("Background webhook processing failed: %s\n", e.getMessage());
         Sentry.captureException(e);
