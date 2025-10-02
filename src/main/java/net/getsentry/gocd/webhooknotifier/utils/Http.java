@@ -4,10 +4,14 @@ import org.apache.http.Header;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicHeader;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import net.getsentry.gocd.webhooknotifier.PluginRequest;
 import net.getsentry.gocd.webhooknotifier.PluginSettings;
@@ -34,6 +38,18 @@ public class Http {
   private static final String DATE_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSSZ";
   protected static final String SIGNATURE_HEADER = "x-gocd-signature";
   protected static final String GCP_AUTH_METADATA_URL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=";
+
+  private static final ExecutorService WEBHOOK_EXECUTOR = Executors.newFixedThreadPool(10);
+
+  private static final RequestConfig REQUEST_CONFIG = RequestConfig.custom()
+      .setConnectTimeout(5000)
+      .setSocketTimeout(10000)
+      .setConnectionRequestTimeout(5000)
+      .build();
+
+  private static final HttpClient HTTP_CLIENT = HttpClientBuilder.create()
+      .setDefaultRequestConfig(REQUEST_CONFIG)
+      .build();
 
   private static final Gson GSON = new GsonBuilder()
       .registerTypeAdapter(Date.class, new DefaultDateTypeAdapter(DATE_PATTERN))
@@ -93,8 +109,14 @@ public class Http {
 
   public static void pingWebhooks(PluginRequest pluginRequest, String type, Object originalPayload)
       throws ServerRequestFailedException {
-    HttpClient httpClient = HttpClientBuilder.create().build();
-    pingWebhooks(pluginRequest, type, originalPayload, httpClient);
+    WEBHOOK_EXECUTOR.submit(() -> {
+      try {
+        pingWebhooks(pluginRequest, type, originalPayload, HTTP_CLIENT);
+      } catch (Exception e) {
+        System.out.printf("Background webhook processing failed: %s\n", e.getMessage());
+        Sentry.captureException(e);
+      }
+    });
   }
 
   protected static HttpResponse post(URL endpoint, String requestBody, HttpClient client, Header... headers)
